@@ -1,14 +1,15 @@
 package ee.sectorsform.sector;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Guards the seeded sector data: every option of the original select box, with its hierarchy and order. */
 @DataJpaTest
@@ -35,11 +36,11 @@ class SectorRepositoryTest {
 
     @Test
     void seed_derivesFourLevelsFromTheIndentation() {
-        Map<Long, Sector> byId =
-                sectorRepository.findAll().stream().collect(Collectors.toMap(Sector::getId, Function.identity()));
+        Map<Long, Sector> byId = sectorRepository.findAll().stream()
+                .collect(Collectors.toMap(Sector::getId, Function.identity()));
 
-        Map<Integer, Long> countByDepth =
-                byId.values().stream().collect(Collectors.groupingBy(s -> depthOf(s, byId), Collectors.counting()));
+        Map<Integer, Long> countByDepth = byId.values().stream()
+                .collect(Collectors.groupingBy(s -> depthOf(s, byId), Collectors.counting()));
         assertThat(countByDepth).containsExactlyInAnyOrderEntriesOf(Map.of(0, 3L, 1, 19L, 2, 47L, 3, 10L));
 
         // Aluminium and steel workboats -> Maritime -> Machinery -> Manufacturing
@@ -56,15 +57,14 @@ class SectorRepositoryTest {
         assertThat(sectorRepository.findById(42L)).map(Sector::getName).hasValue("Fish & fish products");
         assertThat(sectorRepository.findById(390L)).map(Sector::getName).hasValue("Children’s room");
         assertThat(sectorRepository.findById(5L)).map(Sector::getName).hasValue("Printing");
-        assertThat(sectorRepository.findAll()).extracting(Sector::getName).allSatisfy(name -> assertThat(name)
-                .isEqualTo(name.strip()));
+        assertThat(sectorRepository.findAll()).extracting(Sector::getName).allSatisfy(
+                name -> assertThat(name)
+                        .isEqualTo(name.strip()));
     }
 
     private static int depthOf(Sector sector, Map<Long, Sector> byId) {
         int depth = 0;
-        for (Long parentId = sector.getParentId();
-                parentId != null;
-                parentId = byId.get(parentId).getParentId()) {
+        for (Long parentId = sector.getParentId(); parentId != null; parentId = byId.get(parentId).getParentId()) {
             depth++;
         }
         return depth;

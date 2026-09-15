@@ -32,7 +32,7 @@ public class Sector {
         // required by JPA
     }
 
-    Sector(Long id, String name, Long parentId, int sortOrder) {
+    public Sector(Long id, String name, Long parentId, int sortOrder) {
         this.id = id;
         this.name = name;
         this.parentId = parentId;

@@ -10,11 +10,9 @@ public class OpenApiConfig {
 
     @Bean
     OpenAPI sectorsFormOpenApi() {
-        return new OpenAPI()
-                .info(new Info()
-                        .title("Sectors form API")
-                        .version("v1")
-                        .description("Serves the sector hierarchy and stores form submissions. "
-                                + "Errors are returned as RFC 9457 problem details."));
+        return new OpenAPI().info(new Info()
+                .title("Sectors form API")
+                .version("v1")
+                .description("Sector reference data and form submissions. Errors are RFC 9457 problem details."));
     }
 }

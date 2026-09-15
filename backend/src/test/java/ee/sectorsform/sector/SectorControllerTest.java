@@ -1,5 +1,14 @@
 package ee.sectorsform.sector;
 
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.List;
+
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
@@ -7,14 +16,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.List;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(SectorController.class)
 class SectorControllerTest {
@@ -28,12 +29,13 @@ class SectorControllerTest {
     @Test
     void listSectors_returnsNestedTreeInDisplayOrder() throws Exception {
         when(sectorService.findAll())
-                .thenReturn(List.of(
-                        new Sector(1L, "Manufacturing", null, 1),
-                        new Sector(6L, "Food and Beverage", 1L, 2),
-                        new Sector(43L, "Beverages", 6L, 3),
-                        new Sector(13L, "Furniture", 1L, 4),
-                        new Sector(2L, "Service", null, 5)));
+                .thenReturn(
+                        List.of(
+                                new Sector(1L, "Manufacturing", null, 1),
+                                new Sector(6L, "Food and Beverage", 1L, 2),
+                                new Sector(43L, "Beverages", 6L, 3),
+                                new Sector(13L, "Furniture", 1L, 4),
+                                new Sector(2L, "Service", null, 5)));
 
         mockMvc.perform(get("/api/sectors"))
                 .andExpect(status().isOk())

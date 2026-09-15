@@ -116,9 +116,10 @@ The same rules apply on the client and on the server:
 - The client validates first and does not send an invalid form. Errors appear next to the field,
   the first invalid field receives focus and an error summary with `role="alert"` is announced.
 - The server validates independently with Bean Validation and answers `400` with an
-  `application/problem+json` body (RFC 9457) whose `errors` member maps field names to messages.
-  All invalid fields are reported at once. Unknown sector ids are also reported under
-  `errors.sectorIds`.
+  `application/problem+json` body (RFC 9457) whose `errors` member lists the invalid fields as
+  `{field, message}` pairs. All invalid fields are reported at once. Sector ids that do not exist
+  are rejected by the service with `400` and the unknown ids listed in `detail`; the form itself
+  can only send ids it received from the API, so this guards hand-made requests.
 - Server-side messages are shown next to the fields, so the UI stays correct even if client
   validation is bypassed. Malformed JSON yields `400` without an `errors` member.
 
@@ -126,10 +127,10 @@ The same rules apply on the client and on the server:
 
 - `POST /api/submissions` creates a `submission` row with the trimmed `name`, `agreed_to_terms`,
   `created_at`, `updated_at`, and one `submission_sector` row per selected sector.
-- The response is `201` with a `Location` header and the stored representation: `id`, `name`,
-  `sectorIds` in display order, `agreedToTerms`, `createdAt`, `updatedAt`.
+- The response is `201` with the stored representation: `id`, `name`, `sectorIds` in display
+  order, `agreedToTerms`, `createdAt`, `updatedAt`.
 - The submission id is stored in the HTTP session. A second `POST` in the same session returns
-  `409` with the existing `submissionId`, telling the client to update instead.
+  `409`, telling the client to update the existing submission instead.
 
 **3.3 Refill the form using stored data**
 
@@ -156,7 +157,7 @@ The same rules apply on the client and on the server:
 | Method | Path | Success | Errors |
 |---|---|---|---|
 | `GET` | `/api/sectors` | `200` tree | |
-| `POST` | `/api/submissions` | `201` + `Location` | `400` validation, `409` session already owns one |
+| `POST` | `/api/submissions` | `201` | `400` validation, `409` session already owns one |
 | `GET` | `/api/submissions/current` | `200` | `404` nothing saved in this session |
 | `GET` | `/api/submissions/{id}` | `200` | `403` not owner, `404` |
 | `PUT` | `/api/submissions/{id}` | `200` | `400`, `403`, `404` |
@@ -230,7 +231,7 @@ Each step is a self-contained, reviewable commit.
 | 1 | Backend skeleton: Gradle build, wrapper, application class, configuration, context test, Compose `db` service, this README | done |
 | 2 | Flyway migrations: schema and generated sector seed, migration smoke test | done |
 | 3 | `sector` feature: entity, repository, cached service, tree endpoint, tests | done |
-| 4 | `submission` feature: validation, storage, session ownership, problem details, OpenAPI, tests | |
+| 4 | `submission` feature: validation, storage, session ownership, problem details, OpenAPI, tests | done |
 | 5 | Frontend: React + TypeScript + Vite form with unit tests | |
 | 6 | Playwright end-to-end tests | |
 | 7 | Docker Compose: backend and frontend services, Dockerfiles, nginx | |
@@ -272,7 +273,8 @@ The backend runs on `http://localhost:8080`, applies the Flyway migrations on st
 |---|---|
 | `http://localhost:8080/swagger-ui.html` | Swagger UI to browse and try the API |
 | `http://localhost:8080/v3/api-docs` | OpenAPI document |
-| `http://localhost:8080/api/sectors` | the sector tree (submissions follow in step 4) |
+| `http://localhost:8080/api/sectors` | the sector tree |
+| `http://localhost:8080/api/submissions` | saving and editing submissions (see the API summary above) |
 
 Connection settings can be overridden with environment variables:
 

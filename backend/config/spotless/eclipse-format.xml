@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Eclipse JDT formatter profile for this project. Only the settings below differ from the Eclipse
+  defaults; everything else uses the default value.
+-->
+<profiles version="21">
+<profile kind="CodeFormatterProfile" name="sectors-form" version="21">
+<!-- 4 spaces, never tabs -->
+<setting id="org.eclipse.jdt.core.formatter.tabulation.char" value="space"/>
+<setting id="org.eclipse.jdt.core.formatter.tabulation.size" value="4"/>
+<setting id="org.eclipse.jdt.core.formatter.indentation.size" value="4"/>
+<!-- 120 columns -->
+<setting id="org.eclipse.jdt.core.formatter.lineSplit" value="120"/>
+<setting id="org.eclipse.jdt.core.formatter.comment.line_length" value="120"/>
+<!-- keep hand-placed line breaks: one record component or argument per line stays that way -->
+<setting id="org.eclipse.jdt.core.formatter.join_wrapped_lines" value="false"/>
+<setting id="org.eclipse.jdt.core.formatter.join_lines_in_comments" value="false"/>
+<!-- when a record header must wrap, put every component on its own line -->
+<setting id="org.eclipse.jdt.core.formatter.alignment_for_record_components" value="48"/>
+<!-- blank line after the opening brace of a type, at most one blank line in a row -->
+<setting id="org.eclipse.jdt.core.formatter.blank_lines_before_first_class_body_declaration" value="1"/>
+<setting id="org.eclipse.jdt.core.formatter.number_of_empty_lines_to_preserve" value="1"/>
+<!-- leave comments as written -->
+<setting id="org.eclipse.jdt.core.formatter.comment.format_javadoc_comments" value="false"/>
+<setting id="org.eclipse.jdt.core.formatter.comment.format_block_comments" value="false"/>
+<setting id="org.eclipse.jdt.core.formatter.comment.format_line_comments" value="false"/>
+</profile>
+</profiles>

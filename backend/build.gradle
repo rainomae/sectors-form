@@ -95,7 +95,8 @@ tasks.named('check') {
 spotless {
     java {
         target 'src/**/*.java'
-        palantirJavaFormat()
+        importOrder('', 'java|javax', '\\#')
+        eclipse().configFile('config/spotless/eclipse-format.xml')
         removeUnusedImports()
         trimTrailingWhitespace()
         endWithNewline()

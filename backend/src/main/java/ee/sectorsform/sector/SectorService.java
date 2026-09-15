@@ -1,9 +1,13 @@
 package ee.sectorsform.sector;
 
-import java.util.List;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class SectorService {
@@ -21,5 +25,15 @@ public class SectorService {
     @Transactional(readOnly = true)
     public List<Sector> findAll() {
         return sectorRepository.findAllByOrderBySortOrderAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public Set<Sector> findAllById(Set<Long> ids) {
+        Set<Sector> sectors = new HashSet<>(sectorRepository.findAllById(ids));
+        if (sectors.size() != ids.size()) {
+            Set<Long> found = sectors.stream().map(Sector::getId).collect(Collectors.toSet());
+            throw new UnknownSectorException(ids.stream().filter(id -> !found.contains(id)).sorted().toList());
+        }
+        return sectors;
     }
 }
