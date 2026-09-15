@@ -20,6 +20,7 @@ sectors-form/
 │   └── tools/          generator for the sector seed migration
 ├── docs/original/      the index.html the task started from
 ├── frontend/           React + TypeScript + Vite application
+│   └── e2e/            Playwright end-to-end tests
 ├── docker-compose.yml  PostgreSQL (backend and frontend services are added in step 7)
 └── README.md
 ```
@@ -233,7 +234,7 @@ Each step is a self-contained, reviewable commit.
 | 3 | `sector` feature: entity, repository, cached service, tree endpoint, tests | done |
 | 4 | `submission` feature: validation, storage, session ownership, problem details, OpenAPI, tests | done |
 | 5 | Frontend: React + TypeScript + Vite form with unit tests | done |
-| 6 | Playwright end-to-end tests | |
+| 6 | Playwright end-to-end tests, `h2` profile for running without Docker | done |
 | 7 | Docker Compose: backend and frontend services, Dockerfiles, nginx | |
 | 8 | README: full run and test instructions, justification of choices | |
 
@@ -288,6 +289,14 @@ Connection settings can be overridden with environment variables:
 The Compose database accepts `DB_PORT` (host port, default `5432`) and `POSTGRES_PASSWORD`
 (default `sectors`).
 
+**Without Docker**: the `h2` profile runs the backend on an in-memory H2 database instead of
+PostgreSQL. Data is kept only while the backend runs.
+
+```bash
+cd backend
+./gradlew bootRun --args=--spring.profiles.active=h2
+```
+
 ### 4.4 Start the frontend
 
 In another terminal:
@@ -330,4 +339,24 @@ npm test           # unit tests (Vitest)
 npm run lint       # oxlint
 ```
 
-End-to-end tests and the full Docker Compose setup follow in steps 6 to 8.
+### 4.8 End-to-end tests
+
+```bash
+cd frontend
+npx playwright install chromium   # once, downloads the test browser
+npm run e2e
+```
+
+Playwright starts the backend with the `h2` profile and the Vite dev server itself (or reuses
+them if they are already running), then drives the form in Chromium: the sector hierarchy, all
+validation errors and their clearing, save, reload, edit, session isolation between browsers,
+filtering, chips and Clear all. The report is written to `frontend/playwright-report`.
+
+To run the same suite against an already running stack, for example the Docker Compose one, point
+it at that address instead:
+
+```bash
+E2E_BASE_URL=http://localhost:3000 npm run e2e
+```
+
+The full Docker Compose setup follows in step 7.

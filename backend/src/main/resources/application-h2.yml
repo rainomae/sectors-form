@@ -1,0 +1,8 @@
+# Profile `h2`: in-memory H2 in PostgreSQL compatibility mode, for running the backend without Docker
+# (local development, Playwright end-to-end tests). Data lives only while the process runs.
+spring:
+  datasource:
+    url: jdbc:h2:mem:sectors;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ''
