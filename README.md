@@ -93,7 +93,9 @@ localisation, sharing sessions between several backend instances, admin views.
 **2.2 Select box built from the database**
 
 - `GET /api/sectors` returns the tree: an array of roots, each with `id`, `name` and `children`,
-  ordered by `sort_order` at every level.
+  ordered by `sort_order` at every level. The sector list is read from the database once per
+  application start and served from an in-memory cache afterwards; it only changes through a
+  migration, so nothing needs to be evicted.
 - The frontend flattens the tree into options carrying a `level` and a `path`.
 - Options are indented by level with CSS. While sectors load the select is disabled; if the request
   fails an error with a retry action is shown.
@@ -227,7 +229,7 @@ Each step is a self-contained, reviewable commit.
 |---|---|---|
 | 1 | Backend skeleton: Gradle build, wrapper, application class, configuration, context test, Compose `db` service, this README | done |
 | 2 | Flyway migrations: schema and generated sector seed, migration smoke test | done |
-| 3 | `sector` feature: entity, repository, service, tree endpoint, MockMvc tests | |
+| 3 | `sector` feature: entity, repository, cached service, tree endpoint, tests | done |
 | 4 | `submission` feature: validation, storage, session ownership, problem details, OpenAPI, tests | |
 | 5 | Frontend: React + TypeScript + Vite form with unit tests | |
 | 6 | Playwright end-to-end tests | |
@@ -268,9 +270,9 @@ The backend runs on `http://localhost:8080`, applies the Flyway migrations on st
 
 | URL | Content |
 |---|---|
-| `http://localhost:8080/swagger-ui.html` | Swagger UI (empty until the first endpoint arrives in step 3) |
+| `http://localhost:8080/swagger-ui.html` | Swagger UI to browse and try the API |
 | `http://localhost:8080/v3/api-docs` | OpenAPI document |
-| `http://localhost:8080/api/...` | REST API (steps 3 and 4) |
+| `http://localhost:8080/api/sectors` | the sector tree (submissions follow in step 4) |
 
 Connection settings can be overridden with environment variables:
 

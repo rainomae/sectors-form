@@ -1,0 +1,16 @@
+# Test configuration. This file shadows src/main/resources/application.yml on the test classpath, so
+# tests run against in-memory H2 in PostgreSQL compatibility mode and need no profile.
+spring:
+  application:
+    name: sectors-form
+  datasource:
+    url: jdbc:h2:mem:sectors;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ''
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
