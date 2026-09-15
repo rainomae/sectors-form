@@ -1,4 +1,3 @@
-# Step 1: only the database. The backend and frontend services are added in step 7.
 services:
   db:
     image: postgres:17-alpine
@@ -15,6 +14,34 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/sectors
+      DB_USER: sectors
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-sectors}
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      # The JRE image ships no curl or wget; bash's /dev/tcp checks that the HTTP port accepts connections,
+      # which Spring Boot only opens once the application has started.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "${APP_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   db-data:

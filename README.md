@@ -16,12 +16,13 @@ Repository layout (parts marked *planned* arrive in later steps):
 
 ```
 sectors-form/
-├── backend/            Spring Boot application
+├── backend/            Spring Boot application (Dockerfile: Gradle build → JRE image)
 │   └── tools/          generator for the sector seed migration
 ├── docs/original/      the index.html the task started from
-├── frontend/           React + TypeScript + Vite application
-│   └── e2e/            Playwright end-to-end tests
-├── docker-compose.yml  PostgreSQL (backend and frontend services are added in step 7)
+├── frontend/           React + TypeScript + Vite application (Dockerfile: npm build → nginx)
+│   ├── e2e/            Playwright end-to-end tests
+│   └── nginx.conf      serves the app and proxies /api to the backend
+├── docker-compose.yml  PostgreSQL + backend + frontend
 └── README.md
 ```
 
@@ -235,7 +236,7 @@ Each step is a self-contained, reviewable commit.
 | 4 | `submission` feature: validation, storage, session ownership, problem details, OpenAPI, tests | done |
 | 5 | Frontend: React + TypeScript + Vite form with unit tests | done |
 | 6 | Playwright end-to-end tests, `h2` profile for running without Docker | done |
-| 7 | Docker Compose: backend and frontend services, Dockerfiles, nginx | |
+| 7 | Docker Compose: backend and frontend services, Dockerfiles, nginx | done |
 | 8 | README: full run and test instructions, justification of choices | |
 
 ## 4. Running the application
@@ -252,7 +253,29 @@ PostgreSQL runs in Docker.
 All commands are run from the `sectors-form` folder. In PowerShell use `.\gradlew` instead of
 `./gradlew`.
 
-### 4.2 Start the database
+### 4.2 Run everything with Docker Compose
+
+```bash
+docker compose up --build
+```
+
+This builds the backend and frontend images and starts PostgreSQL, the backend and nginx. The first
+build downloads Gradle, the Java dependencies and the npm packages, so it takes a few minutes; later
+starts are fast. When the log shows the frontend container running:
+
+| URL | Content |
+|---|---|
+| `http://localhost:3000` | the form |
+| `http://localhost:8080/swagger-ui.html` | API documentation |
+
+nginx serves the built app and proxies `/api` to the backend, so the browser talks to one origin.
+Stop with `Ctrl+C` and remove the containers with `docker compose down` (add `-v` to delete the
+stored data). Optional variables: `APP_PORT` (default `3000`), `DB_PORT` (default `5432`),
+`POSTGRES_PASSWORD` (default `sectors`).
+
+The sections below run the parts on the host instead, which is the setup for development.
+
+### 4.3 Start the database
 
 ```bash
 docker compose up -d db
@@ -261,7 +284,7 @@ docker compose up -d db
 PostgreSQL 17 listens on `localhost:5432`; database, user and password are all `sectors`. Data is
 kept in the `db-data` volume.
 
-### 4.3 Start the backend
+### 4.4 Start the backend
 
 ```bash
 cd backend
@@ -297,7 +320,7 @@ cd backend
 ./gradlew bootRun --args=--spring.profiles.active=h2
 ```
 
-### 4.4 Start the frontend
+### 4.5 Start the frontend
 
 In another terminal:
 
@@ -310,7 +333,7 @@ npm run dev
 Open `http://localhost:5173`. The dev server proxies `/api` to the backend on port 8080, so the form
 and the API share one origin and the session cookie needs no extra configuration.
 
-### 4.5 Stop
+### 4.6 Stop
 
 Stop the frontend and the backend with `Ctrl+C`, then:
 
@@ -319,7 +342,7 @@ docker compose down        # keeps the stored data
 docker compose down -v     # also deletes the stored data
 ```
 
-### 4.6 Build and test the backend
+### 4.7 Build and test the backend
 
 ```bash
 cd backend
@@ -330,7 +353,7 @@ Runs formatting, compilation, the tests against in-memory H2 (no Docker needed) 
 coverage gates. Reports: `backend/build/reports/tests/test/index.html` and
 `backend/build/reports/jacoco/test/html/index.html`.
 
-### 4.7 Build and test the frontend
+### 4.8 Build and test the frontend
 
 ```bash
 cd frontend
@@ -339,7 +362,7 @@ npm test           # unit tests (Vitest)
 npm run lint       # oxlint
 ```
 
-### 4.8 End-to-end tests
+### 4.9 End-to-end tests
 
 ```bash
 cd frontend
@@ -358,5 +381,3 @@ it at that address instead:
 ```bash
 E2E_BASE_URL=http://localhost:3000 npm run e2e
 ```
-
-The full Docker Compose setup follows in step 7.
