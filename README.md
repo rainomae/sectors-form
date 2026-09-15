@@ -19,7 +19,7 @@ sectors-form/
 ├── backend/            Spring Boot application
 │   └── tools/          generator for the sector seed migration
 ├── docs/original/      the index.html the task started from
-├── frontend/           React application (planned)
+├── frontend/           React + TypeScript + Vite application
 ├── docker-compose.yml  PostgreSQL (backend and frontend services are added in step 7)
 └── README.md
 ```
@@ -232,7 +232,7 @@ Each step is a self-contained, reviewable commit.
 | 2 | Flyway migrations: schema and generated sector seed, migration smoke test | done |
 | 3 | `sector` feature: entity, repository, cached service, tree endpoint, tests | done |
 | 4 | `submission` feature: validation, storage, session ownership, problem details, OpenAPI, tests | done |
-| 5 | Frontend: React + TypeScript + Vite form with unit tests | |
+| 5 | Frontend: React + TypeScript + Vite form with unit tests | done |
 | 6 | Playwright end-to-end tests | |
 | 7 | Docker Compose: backend and frontend services, Dockerfiles, nginx | |
 | 8 | README: full run and test instructions, justification of choices | |
@@ -243,7 +243,7 @@ Each step is a self-contained, reviewable commit.
 
 - Docker with the Compose plugin (Docker Desktop on Windows and macOS; on Windows it requires WSL 2).
 - JDK 25. If another Java 17+ is installed instead, Gradle downloads JDK 25 automatically.
-- Node.js 22 or newer (needed for the frontend from step 5).
+- Node.js 22 or newer (for the frontend).
 
 Gradle and PostgreSQL do not need to be installed: the repository ships the Gradle wrapper and
 PostgreSQL runs in Docker.
@@ -288,16 +288,29 @@ Connection settings can be overridden with environment variables:
 The Compose database accepts `DB_PORT` (host port, default `5432`) and `POSTGRES_PASSWORD`
 (default `sectors`).
 
-### 4.4 Stop
+### 4.4 Start the frontend
 
-Stop the backend with `Ctrl+C`, then:
+In another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173`. The dev server proxies `/api` to the backend on port 8080, so the form
+and the API share one origin and the session cookie needs no extra configuration.
+
+### 4.5 Stop
+
+Stop the frontend and the backend with `Ctrl+C`, then:
 
 ```bash
 docker compose down        # keeps the stored data
 docker compose down -v     # also deletes the stored data
 ```
 
-### 4.5 Build and test the backend
+### 4.6 Build and test the backend
 
 ```bash
 cd backend
@@ -308,4 +321,13 @@ Runs formatting, compilation, the tests against in-memory H2 (no Docker needed) 
 coverage gates. Reports: `backend/build/reports/tests/test/index.html` and
 `backend/build/reports/jacoco/test/html/index.html`.
 
-Frontend, end-to-end and full Docker Compose commands follow in steps 5 to 8.
+### 4.7 Build and test the frontend
+
+```bash
+cd frontend
+npm run build      # type-check and production build into frontend/dist
+npm test           # unit tests (Vitest)
+npm run lint       # oxlint
+```
+
+End-to-end tests and the full Docker Compose setup follow in steps 6 to 8.
