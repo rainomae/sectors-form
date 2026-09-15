@@ -17,6 +17,8 @@ Repository layout (parts marked *planned* arrive in later steps):
 ```
 sectors-form/
 ├── backend/            Spring Boot application
+│   └── tools/          generator for the sector seed migration
+├── docs/original/      the index.html the task started from
 ├── frontend/           React application (planned)
 ├── docker-compose.yml  PostgreSQL (backend and frontend services are added in step 7)
 └── README.md
@@ -198,6 +200,25 @@ submission * ──── * sector        (via submission_sector)
 Ownership is deliberately not a column: it lives in the HTTP session, so the database holds only
 form data. "At least one sector" cannot be a simple constraint and is enforced in the service layer.
 
+**Migrations** live in `backend/src/main/resources/db/migration` and run automatically on start:
+
+| File | Content |
+|---|---|
+| `V1__create_schema.sql` | the three tables above with their constraints and indexes |
+| `V2__seed_sectors.sql` | the 79 sectors; generated, do not edit by hand |
+
+The seed is produced from `docs/original/index.html` by `backend/tools/generate-sector-seed.mjs`
+(option value → `id`, `&nbsp;` depth → `parent_id`, position → `sort_order`, labels trimmed and
+decoded). Regenerate it with:
+
+```bash
+cd backend
+node tools/generate-sector-seed.mjs
+```
+
+The SQL uses only syntax shared by PostgreSQL and H2, so the same files run in production and in
+the tests.
+
 ## 3. Implementation steps
 
 Each step is a self-contained, reviewable commit.
@@ -205,7 +226,7 @@ Each step is a self-contained, reviewable commit.
 | Step | Content | Status |
 |---|---|---|
 | 1 | Backend skeleton: Gradle build, wrapper, application class, configuration, context test, Compose `db` service, this README | done |
-| 2 | Flyway migrations: schema and generated sector seed, migration smoke test | |
+| 2 | Flyway migrations: schema and generated sector seed, migration smoke test | done |
 | 3 | `sector` feature: entity, repository, service, tree endpoint, MockMvc tests | |
 | 4 | `submission` feature: validation, storage, session ownership, problem details, OpenAPI, tests | |
 | 5 | Frontend: React + TypeScript + Vite form with unit tests | |
