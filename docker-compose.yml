@@ -1,0 +1,20 @@
+# Step 1: only the database. The backend and frontend services are added in step 7.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: sectors
+      POSTGRES_USER: sectors
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sectors}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sectors -d sectors"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:

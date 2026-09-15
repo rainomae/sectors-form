@@ -1,0 +1,105 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '4.1.1'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.diffplug.spotless' version '8.10.2'
+    id 'jacoco'
+}
+
+group = 'ee.sectorsform'
+version = '0.1.0'
+description = 'Sectors form backend'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
+
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // H2 backs the integration tests and the `e2e` profile used by Playwright (bootRun);
+    // it is deliberately kept out of the packaged jar, which only talks to PostgreSQL.
+    testAndDevelopmentOnly 'com.h2database:h2'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('bootJar') {
+    archiveFileName = 'app.jar'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    finalizedBy tasks.named('jacocoTestReport')
+}
+
+jacoco {
+    toolVersion = '0.8.15'
+}
+
+// The main class only bootstraps Spring; it is excluded so coverage reflects application code.
+def jacocoClassDirs = files(sourceSets.main.output.classesDirs.files.collect {
+    fileTree(dir: it, exclude: ['**/SectorsFormApplication.class'])
+})
+
+tasks.named('jacocoTestReport') {
+    dependsOn tasks.named('test')
+    classDirectories.setFrom(jacocoClassDirs)
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+tasks.named('jacocoTestCoverageVerification') {
+    dependsOn tasks.named('test')
+    classDirectories.setFrom(jacocoClassDirs)
+    violationRules {
+        rule {
+            limit {
+                counter = 'LINE'
+                minimum = 0.90
+            }
+        }
+        rule {
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.80
+            }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('jacocoTestCoverageVerification')
+}
+
+spotless {
+    java {
+        target 'src/**/*.java'
+        palantirJavaFormat()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    format 'misc', {
+        target '*.gradle', 'src/**/*.yml', 'src/**/*.sql'
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}

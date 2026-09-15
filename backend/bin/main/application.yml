@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: sectors-form
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sectors}
+    username: ${DB_USER:sectors}
+    password: ${DB_PASSWORD:sectors}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema; Hibernate only checks that the entities match it.
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+server:
+  port: 8080
+  servlet:
+    session:
+      # A submission stays editable for as long as the browser session lives.
+      timeout: 30m
+      cookie:
+        http-only: true
+        same-site: lax
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method

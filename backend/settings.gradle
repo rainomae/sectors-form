@@ -1,0 +1,6 @@
+plugins {
+    // Downloads a matching JDK when the toolchain requested in build.gradle is not installed.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'sectors-form-backend'
