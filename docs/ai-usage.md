@@ -78,6 +78,10 @@ Where AI was used:
 > list that does not shrink when a filter has no matches, and an empty-state message inside the
 > list. Validation errors must disappear as soon as the field is fixed.
 
+> Small interaction details must be right: the clear button of the filter field shows a pointer
+> cursor, the remove icon on a chip is centred, and the "Agree to terms" checkbox toggles only when
+> the box itself or its text is clicked, not anywhere on the row.
+
 ### Tests, Docker, documentation
 
 > Add Playwright end-to-end tests that cover the sector hierarchy, all validation errors, save,

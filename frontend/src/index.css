@@ -365,6 +365,8 @@ select:focus option:checked {
 
 .checkbox {
   display: flex;
+  /* Only as wide as the box and its text, so clicks in the empty space to the right do nothing. */
+  justify-self: start;
   align-items: center;
   gap: 0.6rem;
   font-weight: 500;
