@@ -6,7 +6,7 @@ type Field = keyof SubmissionInput
 
 export type FormErrors = Partial<Record<Field, string>>
 
-const FIELDS: Field[] = ['name', 'sectorIds', 'agreedToTerms']
+export const FIELDS: Field[] = ['name', 'sectorIds', 'agreedToTerms']
 
 /** The same rules as on the server; run before sending so nothing invalid leaves the browser. */
 export function validateSubmission(input: SubmissionInput): FormErrors {

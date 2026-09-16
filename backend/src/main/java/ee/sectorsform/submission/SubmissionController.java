@@ -5,6 +5,7 @@ import ee.sectorsform.submission.dto.SubmissionResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** A submission belongs to the HTTP session that created it; only that session can read or update it. */
+/**
+ * A submission belongs to the HTTP session that created it; only that session can read or update it. The
+ * session is created once the first save has succeeded, so visitors who never save get no session and no
+ * cookie.
+ */
 @RestController
 @RequestMapping(value = "/api/submissions", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Submissions", description = "Saved forms; each browser session owns at most one")
@@ -38,13 +43,14 @@ public class SubmissionController {
     @ApiResponse(responseCode = "201", description = "Submission saved")
     @ApiResponse(responseCode = "400", description = "Invalid request body")
     @ApiResponse(responseCode = "409", description = "This session already has a submission")
-    public SubmissionResponse createSubmission(@RequestBody @Valid SubmissionRequest request, HttpSession session) {
-        var existingId = ownedId(session);
+    public SubmissionResponse createSubmission(@RequestBody @Valid SubmissionRequest request,
+            HttpServletRequest httpRequest) {
+        var existingId = ownedId(httpRequest.getSession(false));
         if (existingId != null) {
             throw new SubmissionAlreadyExistsException(existingId);
         }
         var submission = submissionService.create(request.name(), request.sectorIds(), request.agreedToTerms());
-        session.setAttribute(SESSION_ATTRIBUTE, submission.getId());
+        httpRequest.getSession(true).setAttribute(SESSION_ATTRIBUTE, submission.getId());
         return SubmissionResponse.from(submission);
     }
 
@@ -52,8 +58,8 @@ public class SubmissionController {
     @Operation(summary = "Get the submission saved in the current session")
     @ApiResponse(responseCode = "200", description = "Submission found")
     @ApiResponse(responseCode = "404", description = "Nothing has been saved in this session")
-    public SubmissionResponse getCurrentSubmission(HttpSession session) {
-        var ownedId = ownedId(session);
+    public SubmissionResponse getCurrentSubmission(HttpServletRequest httpRequest) {
+        var ownedId = ownedId(httpRequest.getSession(false));
         if (ownedId == null) {
             throw SubmissionNotFoundException.noneInSession();
         }
@@ -65,8 +71,8 @@ public class SubmissionController {
     @ApiResponse(responseCode = "200", description = "Submission found")
     @ApiResponse(responseCode = "403", description = "Not owned by this session")
     @ApiResponse(responseCode = "404", description = "Submission not found")
-    public SubmissionResponse getSubmission(@PathVariable long id, HttpSession session) {
-        requireOwnership(id, session);
+    public SubmissionResponse getSubmission(@PathVariable long id, HttpServletRequest httpRequest) {
+        requireOwnership(id, httpRequest.getSession(false));
         return SubmissionResponse.from(submissionService.findById(id));
     }
 
@@ -78,17 +84,29 @@ public class SubmissionController {
     @ApiResponse(responseCode = "404", description = "Submission not found")
     public SubmissionResponse updateSubmission(
             @PathVariable long id, @RequestBody @Valid SubmissionRequest request,
-            HttpSession session) {
-        requireOwnership(id, session);
+            HttpServletRequest httpRequest) {
+        requireOwnership(id, httpRequest.getSession(false));
         var submission = submissionService.update(id, request.name(), request.sectorIds(), request.agreedToTerms());
         return SubmissionResponse.from(submission);
     }
 
-    private static Long ownedId(HttpSession session) {
-        return (Long) session.getAttribute(SESSION_ATTRIBUTE);
+    /**
+     * The id this session owns, or null when there is no session or nothing has been saved in it. A stale id
+     * (the row no longer exists) is forgotten, so the session behaves as if nothing had been saved.
+     */
+    private Long ownedId(HttpSession session) {
+        if (session == null) {
+            return null;
+        }
+        var id = (Long) session.getAttribute(SESSION_ATTRIBUTE);
+        if (id != null && !submissionService.exists(id)) {
+            session.removeAttribute(SESSION_ATTRIBUTE);
+            return null;
+        }
+        return id;
     }
 
-    private static void requireOwnership(long id, HttpSession session) {
+    private void requireOwnership(long id, HttpSession session) {
         if (!Long.valueOf(id).equals(ownedId(session))) {
             throw new SubmissionAccessDeniedException(id);
         }

@@ -3,8 +3,9 @@
 ## Tool and way of working
 
 The implementation was done with Claude Code (Anthropic's Claude in the terminal) as a pair
-programmer. The work was split into eight steps, each delivered as one reviewable commit: after
-every step the generated code was read, run and tested locally before the next step started.
+programmer. The work was split into eight steps, each delivered as one reviewable commit, followed by smaller
+follow-up commits (UI refinements and two code-review rounds); after every step the generated code was
+read, run and tested locally before the next one started.
 Direction, review, design decisions and all commits were mine; Claude wrote the code, tests and
 documentation from the prompts below, ran the builds and tests, and drove a browser to verify the UI.
 
@@ -100,3 +101,6 @@ Where AI was used:
 > Keep the README minimal: what is needed and how to run it, what was wrong with `index.html` and
 > how it was fixed, how the tasks were solved, the justification of choices and the
 > AI-usage description.
+
+> Run a full code review of the repository (correctness, removed behaviour, cross-file contracts,
+> reuse, simplification, efficiency, documentation claims) and fix every confirmed finding.

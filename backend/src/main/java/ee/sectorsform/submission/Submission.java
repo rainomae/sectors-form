@@ -10,10 +10,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -38,11 +37,12 @@ public class Submission {
     @JoinTable(name = "submission_sector", joinColumns = @JoinColumn(name = "submission_id"), inverseJoinColumns = @JoinColumn(name = "sector_id"))
     private Set<Sector> sectors = new HashSet<>();
 
-    @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @UpdateTimestamp
+    // Both timestamps are set here rather than by Hibernate: @UpdateTimestamp does not fire when only the sectors
+    // change (a changed collection alone does not make the row dirty), and setting them together keeps
+    // updated_at >= created_at. Every save, even an unchanged one, refreshes updated_at.
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -51,9 +51,8 @@ public class Submission {
     }
 
     Submission(String name, Set<Sector> sectors, boolean agreedToTerms) {
-        this.name = name;
-        this.sectors.addAll(sectors);
-        this.agreedToTerms = agreedToTerms;
+        update(name, sectors, agreedToTerms);
+        this.createdAt = this.updatedAt;
     }
 
     void update(String name, Set<Sector> sectors, boolean agreedToTerms) {
@@ -61,6 +60,8 @@ public class Submission {
         this.sectors.clear();
         this.sectors.addAll(sectors);
         this.agreedToTerms = agreedToTerms;
+        // Microsecond precision, like the database columns, so a value read back compares equal to the response.
+        this.updatedAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
     }
 
     public Long getId() {

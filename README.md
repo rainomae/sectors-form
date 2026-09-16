@@ -12,7 +12,7 @@ Vitest, Playwright. Runtime: Docker Compose.
 ```
 backend/    Spring Boot API (ee.sectorsform: sector, submission, shared)
 frontend/   React app, e2e/ Playwright tests
-docs/       ai-usage.md, original/index.html
+docs/       database-dump.sql (structure and data), ai-usage.md, original/index.html
 ```
 
 ## Running
@@ -37,17 +37,18 @@ cd backend && ./gradlew bootRun         # API on http://localhost:8080
 cd frontend && npm install && npm run dev   # form on http://localhost:5173, /api proxied to 8080
 ```
 
-Without Docker, the backend can run on in-memory H2: `./gradlew bootRun --args=--spring.profiles.active=h2`.
+Without Docker, the backend can run on in-memory H2: `cd backend && ./gradlew bootRun --args=--spring.profiles.active=h2`.
 
 Tests:
 
 ```bash
-cd backend && ./gradlew build           # unit, slice, repository and integration tests on H2; JaCoCo gate 90 % lines
+cd backend && ./gradlew build           # unit, slice, repository and integration tests on H2; JaCoCo gates: 90 % lines, 80 % branches
 cd frontend && npm test                 # Vitest unit tests
 cd frontend && npx playwright install chromium && npm run e2e   # end-to-end; starts backend (h2) and Vite itself
 ```
 
-`E2E_BASE_URL=http://localhost:3000 npm run e2e` runs the end-to-end suite against the Compose stack.
+`E2E_BASE_URL=http://localhost:3000 npm run e2e` (PowerShell: `$env:E2E_BASE_URL='http://localhost:3000'; npm run e2e`)
+runs the end-to-end suite against the Compose stack.
 
 ## Task 1: deficiencies in index.html
 
@@ -72,8 +73,10 @@ cd frontend && npx playwright install chromium && npm run e2e   # end-to-end; st
   position → `sort_order`. 79 sectors, 4 levels.
 - **2.2** `GET /api/sectors` returns the tree (cached after the first read); the frontend renders it
   into the native `select multiple`.
-- **3.1** Client and server apply the same rules; the server answers `400` as RFC 9457 problem
-  details with an `errors` list of `{field, message}`, shown next to the fields.
+- **3.1** Client and server apply the same rules; both trim surrounding whitespace (the same Unicode set)
+  before checking the name. Validation failures are `400`
+  RFC 9457 problem details with an `errors` list of `{field, message}`, shown next to the fields; a
+  hand-made request with unknown sector ids gets a `400` whose `detail` names them.
 - **3.2** `POST /api/submissions` stores name, sectors (`submission_sector`) and agreement in
   PostgreSQL and binds the new id to the HTTP session.
 - **3.3** After a save the form is refilled by reading the stored submission back with
@@ -83,6 +86,7 @@ cd frontend && npx playwright install chromium && npm run e2e   # end-to-end; st
 
 Data model: `sector` (`id` = original option value, `name`, `parent_id`, `sort_order`),
 `submission` (`id`, `name`, `agreed_to_terms`, timestamps), `submission_sector` (many-to-many).
+A full dump of the database (structure and data, `pg_dump`) is in `docs/database-dump.sql`.
 
 ## Choices and why
 

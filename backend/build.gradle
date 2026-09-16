@@ -31,7 +31,7 @@ dependencies {
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 
-    // H2 backs the integration tests and the `e2e` profile used by Playwright (bootRun);
+    // H2 backs the integration tests and the `h2` profile used by Playwright and for running without Docker;
     // it is deliberately kept out of the packaged jar, which only talks to PostgreSQL.
     testAndDevelopmentOnly 'com.h2database:h2'
 

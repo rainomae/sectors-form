@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { ApiError, createSubmission, fetchCurrentSubmission, fetchSectors, updateSubmission } from '../api/client'
 import type { Submission, SubmissionInput } from '../api/types'
 import { flattenSectors, type SectorOption } from '../sectors/flattenSectors'
 import { SectorSelect } from '../sectors/SectorSelect'
 import { Toast } from '../shared/Toast'
-import { NAME_MAX_LENGTH, serverErrorsOf, validateSubmission, type FormErrors } from './validation'
+import { FIELDS, NAME_MAX_LENGTH, serverErrorsOf, validateSubmission, type FormErrors } from './validation'
 
 const EMPTY: SubmissionInput = { name: '', sectorIds: [], agreedToTerms: false }
 
@@ -23,7 +23,6 @@ export function SubmissionForm() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [loadAttempt, setLoadAttempt] = useState(0)
-  const closeToast = useCallback(() => setToast(null), [])
 
   useEffect(() => {
     let cancelled = false
@@ -100,17 +99,21 @@ export function SubmissionForm() {
     }
     if (error.status === 409) {
       // This session already saved data (for example in another tab): load it and continue editing that.
-      const current = await fetchCurrentSubmission()
+      const current = await fetchCurrentSubmission().catch(() => null)
       if (current) {
         setSubmission(current)
         setValues(toInput(current))
+        setSaveError('This session already has saved data; it has been loaded so you can edit it.')
+      } else {
+        setSaveError('This session already has saved data, but it could not be loaded. Please reload the page.')
       }
-      setSaveError('This session already has saved data; it has been loaded so you can edit it.')
       return
     }
     if (submission && (error.status === 403 || error.status === 404)) {
       setSubmission(null)
-      setSaveError('Your session has expired. Press Save again to store your data as a new entry.')
+      setSaveError(
+        'Your saved data is no longer available (the session may have expired). Press Save again to store it as a new entry.',
+      )
       return
     }
     setSaveError(error.problem?.detail ?? 'Saving failed. Please try again.')
@@ -216,7 +219,7 @@ export function SubmissionForm() {
           </p>
         )}
       </div>
-      <Toast message={toast} onClose={closeToast} />
+      <Toast message={toast} onClose={() => setToast(null)} />
     </form>
   )
 }
@@ -238,7 +241,7 @@ function toInput(submission: Submission): SubmissionInput {
 }
 
 function focusFirstInvalid(errors: FormErrors) {
-  const first = (['name', 'sectorIds', 'agreedToTerms'] as const).find((field) => errors[field])
+  const first = FIELDS.find((field) => errors[field])
   if (first) {
     document.getElementById(first)?.focus()
   }

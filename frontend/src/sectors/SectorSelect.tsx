@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ChangeEvent } from 'react'
-import { filterOptions, type SectorOption } from './flattenSectors'
+import { CloseIcon } from '../shared/CloseIcon'
+import { filterOptions, parentOf, type SectorOption } from './flattenSectors'
 
 interface Props {
   options: SectorOption[]
@@ -19,10 +20,6 @@ function ancestorsOf(option: SectorOption | undefined, byId: Map<number, SectorO
   return ancestors
 }
 
-function parentOf(option: SectorOption, byId: Map<number, SectorOption>): SectorOption | undefined {
-  return option.parentId === null ? undefined : byId.get(option.parentId)
-}
-
 /** CSS class that gives a top-level sector and everything under it one shared colour. */
 function groupClass(option: SectorOption): string {
   return `group-${option.rootIndex % GROUP_COLOURS}`
@@ -38,6 +35,7 @@ export function SectorSelect({ options, value, onChange, error }: Props) {
   const [topValue, setTopValue] = useState<string | null>(null)
   const selectRef = useRef<HTMLSelectElement>(null)
   const keepScroll = useRef<number | null>(null)
+  const releaseFrame = useRef(0)
   const visible = filterOptions(options, query)
   const selected = options.filter((option) => value.includes(option.id))
   // While a group's header row is scrolled out of view, a breadcrumb over the list names the group and
@@ -47,7 +45,7 @@ export function SectorSelect({ options, value, onChange, error }: Props) {
   const breadcrumb = ancestorsOf(topOption, byId)
 
   // Changing the selection makes the browser scroll the list to the selected row, partly after its own
-  // layout pass. For a short moment after a click, keep the list where the user had it.
+  // layout pass. Until that has happened, keep the list where the user had it.
   useLayoutEffect(restoreScroll)
 
   function restoreScroll() {
@@ -78,7 +76,7 @@ export function SectorSelect({ options, value, onChange, error }: Props) {
 
   function scrollToOption(option: SectorOption) {
     const select = selectRef.current
-    const row = select && Array.from(select.options).find((element) => element.value === String(option.id))
+    const row = select?.querySelector<HTMLOptionElement>(`option[value="${option.id}"]`)
     if (select && row) {
       const paddingTop = parseFloat(getComputedStyle(select).paddingTop)
       select.scrollTop += row.getBoundingClientRect().top - select.getBoundingClientRect().top - paddingTop
@@ -89,10 +87,15 @@ export function SectorSelect({ options, value, onChange, error }: Props) {
   function toggle(id: number) {
     const select = selectRef.current
     if (select) {
+      // The browser's own scroll lands after the next layout; two frames later the list is released again, so
+      // a user who scrolls right after clicking is not fought.
       keepScroll.current = select.scrollTop
-      window.setTimeout(() => {
-        keepScroll.current = null
-      }, 300)
+      cancelAnimationFrame(releaseFrame.current)
+      releaseFrame.current = requestAnimationFrame(() => {
+        releaseFrame.current = requestAnimationFrame(() => {
+          keepScroll.current = null
+        })
+      })
     }
     onChange(value.includes(id) ? value.filter((selectedId) => selectedId !== id) : [...value, id])
   }
@@ -137,19 +140,25 @@ export function SectorSelect({ options, value, onChange, error }: Props) {
         />
       </div>
       <div className="list">
-        {breadcrumb.length > 0 && (
-          <nav className={`list-breadcrumb ${groupClass(breadcrumb[0])}`} aria-label="Group of the visible sectors">
-            <span aria-hidden="true">↑</span>
-            {breadcrumb.map((ancestor, index) => (
-              <span key={ancestor.id}>
-                {index > 0 && <span aria-hidden="true"> › </span>}
-                <button type="button" onClick={() => scrollToOption(ancestor)}>
-                  {ancestor.name}
-                </button>
-              </span>
-            ))}
-          </nav>
-        )}
+        {/* Always rendered so that its row keeps its height on narrow screens, where it sits above the list. */}
+        <nav
+          className={`list-breadcrumb ${breadcrumb.length > 0 ? groupClass(breadcrumb[0]) : 'is-empty'}`}
+          aria-label="Group of the visible sectors"
+        >
+          {breadcrumb.length > 0 && (
+            <>
+              <span aria-hidden="true">↑ </span>
+              {breadcrumb.map((ancestor, index) => (
+                <span key={ancestor.id}>
+                  {index > 0 && <span aria-hidden="true"> › </span>}
+                  <button type="button" className="link-button" onClick={() => scrollToOption(ancestor)}>
+                    {ancestor.name}
+                  </button>
+                </span>
+              ))}
+            </>
+          )}
+        </nav>
       <select
         ref={selectRef}
         id="sectorIds"
@@ -209,13 +218,11 @@ export function SectorSelect({ options, value, onChange, error }: Props) {
                 <span>{option.path}</span>
                 <button
                   type="button"
-                  className="chip-remove"
+                  className="icon-button chip-remove"
                   aria-label={`Remove ${option.path}`}
                   onClick={() => toggle(option.id)}
                 >
-                  <svg aria-hidden="true" viewBox="0 0 12 12" width="10" height="10">
-                    <path d="M2 2l8 8M10 2l-8 8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
+                  <CloseIcon />
                 </button>
               </li>
             ))}

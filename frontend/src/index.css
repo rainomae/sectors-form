@@ -266,32 +266,27 @@ select:focus option:checked {
   position: absolute;
   top: 0.6rem;
   right: 1.6rem;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  /* Plain text flow: arrow, separators and links share one baseline and wrap together on narrow screens. */
+  max-width: calc(100% - 3.2rem);
   padding: 0.25rem 0.7rem;
   font-size: 0.8125rem;
   font-weight: 500;
+  line-height: 1.4;
   color: var(--text-muted);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 1rem;
   box-shadow: var(--shadow-sm);
 }
 
-.list-breadcrumb button {
-  height: auto;
-  padding: 0;
-  font-size: inherit;
-  font-weight: 600;
-  color: var(--group-fg);
-  background: transparent;
-  box-shadow: none;
+.list-breadcrumb.is-empty {
+  visibility: hidden;
 }
 
-.list-breadcrumb button:hover:not(:disabled) {
-  background: transparent;
-  text-decoration: underline;
+.list-breadcrumb .link-button {
+  display: inline;
+  font-weight: 600;
+  color: var(--group-fg);
 }
 
 /* Selection summary under the list: count, Clear all and the chips */
@@ -324,7 +319,8 @@ select:focus option:checked {
 
 .chip {
   display: inline-flex;
-  align-items: center;
+  /* Long paths wrap on narrow screens: keep the dot and the remove button on the first line. */
+  align-items: flex-start;
   gap: 0.5rem;
   padding: 0.3rem 0.35rem 0.3rem 0.75rem;
   font-size: 0.8125rem;
@@ -337,23 +333,30 @@ select:focus option:checked {
 
 .chip-dot {
   flex: none;
+  margin-top: 0.36rem;
   width: 0.5rem;
   height: 0.5rem;
   border-radius: 50%;
   background: var(--group-fg);
 }
 
-.chip-remove {
+/* Round icon-only button; chip removal and the toast close share it and set only their colours. */
+.icon-button {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: 1.5rem;
   height: 1.5rem;
   padding: 0;
-  color: var(--text-muted);
   background: transparent;
   border-radius: 50%;
   box-shadow: none;
+}
+
+.chip-remove {
+  margin-top: -0.15rem;
+  color: var(--text-muted);
 }
 
 .chip-remove:hover:not(:disabled) {
@@ -553,19 +556,31 @@ button:disabled {
     flex-direction: column-reverse;
     align-items: stretch;
   }
+
+  /* On narrow screens the breadcrumb would cover the row text, so it gets its own row above the list. */
+  .list-breadcrumb {
+    position: static;
+    justify-self: start;
+    max-width: 100%;
+    min-height: 1.75rem;
+    margin-bottom: 0.4rem;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
 }
 
 /* Toast: a short confirmation in the corner of the page */
 
 .toast-region {
+  /* Top corner: it never covers the Save button at the bottom of the form. */
   position: fixed;
+  top: 1.25rem;
   right: 1.25rem;
-  bottom: 1.25rem;
   z-index: 10;
 }
 
 .toast {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -591,21 +606,14 @@ button:disabled {
   background: var(--success);
 }
 
-/* Close button in the top-right corner of the toast */
+/* Close button in the top-right corner of the toast. It is positioned within the fixed region, which is
+   exactly as large as the toast, and animates in with it. */
 .toast-close {
   position: absolute;
   top: 0.35rem;
   right: 0.35rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  padding: 0;
   color: rgb(255 255 255 / 0.7);
-  background: transparent;
-  border-radius: 50%;
-  box-shadow: none;
+  animation: toast-in 0.2s ease-out;
 }
 
 .toast-close:hover:not(:disabled) {
@@ -616,10 +624,22 @@ button:disabled {
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(0.5rem);
+    transform: translateY(-0.5rem);
   }
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .toast-region {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+  }
+
+  .toast {
+    max-width: none;
   }
 }

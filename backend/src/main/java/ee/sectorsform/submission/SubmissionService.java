@@ -23,7 +23,7 @@ public class SubmissionService {
 
     @Transactional
     public Submission create(String name, Set<Long> sectorIds, boolean agreedToTerms) {
-        var submission = new Submission(name.strip(), sectorService.findAllById(sectorIds), agreedToTerms);
+        var submission = new Submission(name, sectorService.findAllById(sectorIds), agreedToTerms);
         var saved = submissionRepository.save(submission);
         log.info("Submission created: id={}, sectors={}", saved.getId(), sectorIds.size());
         return saved;
@@ -33,10 +33,15 @@ public class SubmissionService {
     public Submission update(long id, String name, Set<Long> sectorIds, boolean agreedToTerms) {
         var submission = submissionRepository.findWithSectorsById(id)
                 .orElseThrow(() -> new SubmissionNotFoundException(id));
-        submission.update(name.strip(), sectorService.findAllById(sectorIds), agreedToTerms);
+        submission.update(name, sectorService.findAllById(sectorIds), agreedToTerms);
         submissionRepository.flush();
         log.info("Submission updated: id={}, sectors={}", id, sectorIds.size());
         return submission;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean exists(long id) {
+        return submissionRepository.existsById(id);
     }
 
     @Transactional(readOnly = true)

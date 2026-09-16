@@ -50,6 +50,6 @@ export function filterOptions(options: SectorOption[], query: string): SectorOpt
   return options.filter((option) => keep.has(option.id))
 }
 
-function parentOf(option: SectorOption, byId: Map<number, SectorOption>): SectorOption | undefined {
+export function parentOf(option: SectorOption, byId: Map<number, SectorOption>): SectorOption | undefined {
   return option.parentId === null ? undefined : byId.get(option.parentId)
 }

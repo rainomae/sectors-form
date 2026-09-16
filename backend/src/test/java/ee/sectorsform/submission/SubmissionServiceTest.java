@@ -1,6 +1,5 @@
 package ee.sectorsform.submission;
 
-import ee.sectorsform.sector.Sector;
 import ee.sectorsform.sector.SectorService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +10,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.Set;
 
+import static ee.sectorsform.submission.SubmissionRequests.FISH;
+import static ee.sectorsform.submission.SubmissionRequests.FOOD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -20,9 +21,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SubmissionServiceTest {
-
-    private static final Sector FOOD = new Sector(6L, "Food and Beverage", 1L, 4);
-    private static final Sector FISH = new Sector(42L, "Fish & fish products", 6L, 7);
 
     @Mock
     private SubmissionRepository submissionRepository;
@@ -34,11 +32,11 @@ class SubmissionServiceTest {
     private SubmissionService submissionService;
 
     @Test
-    void create_trimsTheNameResolvesTheSectorsAndSaves() {
+    void create_resolvesTheSectorsAndSaves() {
         when(sectorService.findAllById(Set.of(6L, 42L))).thenReturn(Set.of(FOOD, FISH));
         when(submissionRepository.save(any(Submission.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var saved = submissionService.create("  Mari Maasikas  ", Set.of(6L, 42L), true);
+        var saved = submissionService.create("Mari Maasikas", Set.of(6L, 42L), true);
 
         assertThat(saved.getName()).isEqualTo("Mari Maasikas");
         assertThat(saved.getSectors()).containsExactlyInAnyOrder(FOOD, FISH);
@@ -52,7 +50,7 @@ class SubmissionServiceTest {
         when(submissionRepository.findWithSectorsById(1L)).thenReturn(Optional.of(existing));
         when(sectorService.findAllById(Set.of(42L))).thenReturn(Set.of(FISH));
 
-        var updated = submissionService.update(1L, " Mari Tamm ", Set.of(42L), true);
+        var updated = submissionService.update(1L, "Mari Tamm", Set.of(42L), true);
 
         assertThat(updated).isSameAs(existing);
         assertThat(updated.getName()).isEqualTo("Mari Tamm");

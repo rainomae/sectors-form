@@ -8,12 +8,19 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.time.Instant;
+
+import static ee.sectorsform.submission.SubmissionRequests.SUBMISSIONS;
+import static ee.sectorsform.submission.SubmissionRequests.json;
+import static ee.sectorsform.submission.SubmissionRequests.postJson;
+import static ee.sectorsform.submission.SubmissionRequests.putJson;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -22,8 +29,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class SubmissionIntegrationTest {
-
-    private static final String SUBMISSIONS = "/api/submissions";
 
     @Autowired
     private MockMvc mockMvc;
@@ -51,6 +56,7 @@ class SubmissionIntegrationTest {
                 .getResponse()
                 .getContentAsString();
         long id = idOf(body);
+        assertThat((String) JsonPath.read(body, "$.updatedAt")).isEqualTo(JsonPath.read(body, "$.createdAt"));
 
         mockMvc.perform(get(SUBMISSIONS + "/current").session(session))
                 .andExpect(status().isOk())
@@ -166,42 +172,62 @@ class SubmissionIntegrationTest {
     }
 
     @Test
-    void getCurrentSubmission_whenTheOwnedRowNoLongerExists_returns404() throws Exception {
+    void getCurrentSubmission_whenTheOwnedRowNoLongerExists_returns404AndForgetsTheId() throws Exception {
         var session = new MockHttpSession();
         session.setAttribute(SubmissionController.SESSION_ATTRIBUTE, 987654321L);
 
         mockMvc.perform(get(SUBMISSIONS + "/current").session(session))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.detail").value("Submission not found: 987654321"));
+                .andExpect(jsonPath("$.detail").value("No submission has been saved in this session"));
 
-        mockMvc.perform(update(session, 987654321L, "Mari", "[1]")).andExpect(status().isNotFound());
+        assertThat(session.getAttribute(SubmissionController.SESSION_ATTRIBUTE)).isNull();
+        mockMvc.perform(update(session, 987654321L, "Mari", "[1]")).andExpect(status().isForbidden());
     }
 
-    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder create(
-            MockHttpSession session,
-            String name,
+    @Test
+    void updateSubmission_thatChangesOnlyTheSectors_refreshesUpdatedAt() throws Exception {
+        var session = new MockHttpSession();
+        var created = mockMvc.perform(create(session, "Mari", "[6]")).andReturn().getResponse().getContentAsString();
+        long id = idOf(created);
+        Instant updatedAtAfterCreate = Instant.parse(JsonPath.read(created, "$.updatedAt"));
+
+        var updated = mockMvc.perform(update(session, id, "Mari", "[6, 42]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sectorIds", contains(6, 42)))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String updatedAtAfterUpdate = JsonPath.read(updated, "$.updatedAt");
+        assertThat(Instant.parse(updatedAtAfterUpdate)).isAfter(updatedAtAfterCreate);
+
+        // read back from the database, not only from the response
+        mockMvc.perform(get(SUBMISSIONS + "/current").session(session))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.updatedAt").value(updatedAtAfterUpdate));
+    }
+
+    @Test
+    void createSubmission_whenTheSessionPointsAtAMissingRow_createsANewOneInsteadOf409() throws Exception {
+        var session = new MockHttpSession();
+        session.setAttribute(SubmissionController.SESSION_ATTRIBUTE, 987654321L);
+
+        var body = mockMvc.perform(create(session, "Mari", "[1]"))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        assertThat(session.getAttribute(SubmissionController.SESSION_ATTRIBUTE)).isEqualTo(idOf(body));
+    }
+
+    private static MockHttpServletRequestBuilder create(MockHttpSession session, String name, String sectorIds) {
+        return postJson(session, json(name, sectorIds));
+    }
+
+    private static MockHttpServletRequestBuilder update(MockHttpSession session, long id, String name,
             String sectorIds) {
-        return post(SUBMISSIONS)
-                .session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(name, sectorIds));
-    }
-
-    private static org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder update(
-            MockHttpSession session,
-            long id,
-            String name,
-            String sectorIds) {
-        return put(SUBMISSIONS + "/" + id)
-                .session(session)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(name, sectorIds));
-    }
-
-    private static String json(String name, String sectorIds) {
-        return """
-                {"name": "%s", "sectorIds": %s, "agreedToTerms": true}
-                """.formatted(name, sectorIds);
+        return putJson(session, id, json(name, sectorIds));
     }
 
     private static long idOf(String responseBody) {

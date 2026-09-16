@@ -6,8 +6,9 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Run stage: nginx serves the static files and proxies /api to the backend.
-FROM nginx:1.31-alpine
+# Run stage: nginx (unprivileged variant, runs as a non-root user on port 8080) serves the static files and
+# proxies /api to the backend.
+FROM nginxinc/nginx-unprivileged:1.31-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
-EXPOSE 80
+EXPOSE 8080
