@@ -82,6 +82,10 @@ Where AI was used:
 > cursor, the remove icon on a chip is centred, and the "Agree to terms" checkbox toggles only when
 > the box itself or its text is clicked, not anywhere on the row.
 
+> After a successful save, refill the form by reading the stored submission back from the server,
+> not from the save response. Show the confirmation as a toast that stays until it is closed with
+> an X in its corner; keep validation and server errors inline next to the fields.
+
 ### Tests, Docker, documentation
 
 > Add Playwright end-to-end tests that cover the sector hierarchy, all validation errors, save,

@@ -76,8 +76,8 @@ cd frontend && npx playwright install chromium && npm run e2e   # end-to-end; st
   details with an `errors` list of `{field, message}`, shown next to the fields.
 - **3.2** `POST /api/submissions` stores name, sectors (`submission_sector`) and agreement in
   PostgreSQL and binds the new id to the HTTP session.
-- **3.3** The form is refilled from the server's response, and on page load from
-  `GET /api/submissions/current`.
+- **3.3** After a save the form is refilled by reading the stored submission back with
+  `GET /api/submissions/current`; the same call prefills the form on page load.
 - **3.4** `PUT /api/submissions/{id}` and `GET /api/submissions/{id}` are allowed only for the id
   stored in the session (`403` otherwise). Session cookie: `HttpOnly`, `SameSite=Lax`, 30 minutes.
 

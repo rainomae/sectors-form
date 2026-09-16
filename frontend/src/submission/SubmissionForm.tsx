@@ -1,22 +1,18 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { ApiError, createSubmission, fetchCurrentSubmission, fetchSectors, updateSubmission } from '../api/client'
 import type { Submission, SubmissionInput } from '../api/types'
 import { flattenSectors, type SectorOption } from '../sectors/flattenSectors'
 import { SectorSelect } from '../sectors/SectorSelect'
+import { Toast } from '../shared/Toast'
 import { NAME_MAX_LENGTH, serverErrorsOf, validateSubmission, type FormErrors } from './validation'
 
 const EMPTY: SubmissionInput = { name: '', sectorIds: [], agreedToTerms: false }
 
 type Status = 'loading' | 'failed' | 'ready' | 'saving'
 
-interface Message {
-  kind: 'success' | 'error'
-  text: string
-}
-
 /**
  * The form. On load it fetches the sectors and the submission saved in this session, if any; Save
- * creates or updates that submission and refills the form from what the server stored.
+ * creates or updates that submission and refills the form by reading the stored submission back from the server.
  */
 export function SubmissionForm() {
   const [options, setOptions] = useState<SectorOption[]>([])
@@ -24,8 +20,10 @@ export function SubmissionForm() {
   const [values, setValues] = useState<SubmissionInput>(EMPTY)
   const [errors, setErrors] = useState<FormErrors>({})
   const [status, setStatus] = useState<Status>('loading')
-  const [message, setMessage] = useState<Message | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
   const [loadAttempt, setLoadAttempt] = useState(0)
+  const closeToast = useCallback(() => setToast(null), [])
 
   useEffect(() => {
     let cancelled = false
@@ -66,7 +64,8 @@ export function SubmissionForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setMessage(null)
+    setSaveError(null)
+    setToast(null)
     const validationErrors = validateSubmission(values)
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) {
@@ -77,9 +76,10 @@ export function SubmissionForm() {
     setStatus('saving')
     try {
       const saved = submission ? await updateSubmission(submission.id, values) : await createSubmission(values)
-      setSubmission(saved)
-      setValues(toInput(saved))
-      setMessage({ kind: 'success', text: 'Saved. You can keep editing your data during this session.' })
+      const stored = await readBack(saved)
+      setSubmission(stored)
+      setValues(toInput(stored))
+      setToast('Saved. You can keep editing your data during this session.')
     } catch (error) {
       await handleSaveError(error)
     } finally {
@@ -89,7 +89,7 @@ export function SubmissionForm() {
 
   async function handleSaveError(error: unknown) {
     if (!(error instanceof ApiError)) {
-      setMessage({ kind: 'error', text: 'Could not reach the server. Please try again.' })
+      setSaveError('Could not reach the server. Please try again.')
       return
     }
     if (error.status === 400 && error.problem?.errors) {
@@ -105,15 +105,15 @@ export function SubmissionForm() {
         setSubmission(current)
         setValues(toInput(current))
       }
-      setMessage({ kind: 'error', text: 'This session already has saved data; it has been loaded so you can edit it.' })
+      setSaveError('This session already has saved data; it has been loaded so you can edit it.')
       return
     }
     if (submission && (error.status === 403 || error.status === 404)) {
       setSubmission(null)
-      setMessage({ kind: 'error', text: 'Your session has expired. Press Save again to store your data as a new entry.' })
+      setSaveError('Your session has expired. Press Save again to store your data as a new entry.')
       return
     }
-    setMessage({ kind: 'error', text: error.problem?.detail ?? 'Saving failed. Please try again.' })
+    setSaveError(error.problem?.detail ?? 'Saving failed. Please try again.')
   }
 
   if (status === 'loading') {
@@ -210,14 +210,27 @@ export function SubmissionForm() {
         <button type="submit" disabled={saving}>
           {saving ? 'Saving…' : 'Save'}
         </button>
-        {message && (
-          <p className={`message ${message.kind}`} role={message.kind === 'error' ? 'alert' : 'status'}>
-            {message.text}
+        {saveError && (
+          <p className="message error" role="alert">
+            {saveError}
           </p>
         )}
       </div>
+      <Toast message={toast} onClose={closeToast} />
     </form>
   )
+}
+
+/**
+ * Re-reads the submission after a save, so the form is refilled with what is stored rather than with the
+ * save response. Falls back to the response if the read fails.
+ */
+async function readBack(saved: Submission): Promise<Submission> {
+  try {
+    return (await fetchCurrentSubmission()) ?? saved
+  } catch {
+    return saved
+  }
 }
 
 function toInput(submission: Submission): SubmissionInput {
